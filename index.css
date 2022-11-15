@@ -1,0 +1,5 @@
+/* TBD if this is actually necessary */
+/* basically any composite tailwind classes should be added here */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
