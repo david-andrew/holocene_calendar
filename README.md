@@ -1,7 +1,7 @@
 ## Prereqs
 - cargo
 - trunk
-- tailwindcss: `npm install -g tailwindcss`
+- tailwindcss cli: `npm install -g tailwindcss`
 
 
 ### running dev server
