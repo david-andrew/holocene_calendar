@@ -4,15 +4,15 @@ use yew::prelude::*;
 fn App() -> Html {
     let counter = use_state(|| 0);
     let value = *counter;
-    let onclick = move |_| counter.set(value + 1);
+    let onclick = move |delta: i32| move |_| counter.set(value + delta);
     
     html! {
         <div>
             <p class="bg-green-500">{"Test!"}</p>
-            <button 
-                class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" 
-                onclick={onclick}
-            >
+            <button onclick={onclick.clone()(-1)} class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                { "-1" }
+            </button>
+            <button onclick={onclick.clone()(1)} class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
                 { "+1" }
             </button>
             <p>{ value }</p>
