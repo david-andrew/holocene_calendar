@@ -1,11 +1,31 @@
 use yew::prelude::*;
+// use yew_hooks::{use_list, use_drag_with_options};
+use gloo_file::File;
+use web_sys::{Event, HtmlInputElement};
+use log::info;
+
 
 #[function_component]
 fn App() -> Html {
-    let counter = use_state(|| 0);
-    let value = *counter;
-    let onclick = move |delta: i32| move |_| counter.set(value + delta);
     
+    // hello world counter
+    let counter_handle = use_state(|| 0);
+    let counter = *counter_handle;
+    let onclick = move |delta: i32| move |_| counter_handle.set(counter + delta);
+
+    // list of files
+    // let files_handle = use_list::<i32>(|| vec![]);
+    // let list = use_list(vec![1, 2, 3, 4, 5]);
+    // let files_handle = use_state::<Vec<File>, _>(|| vec![]);
+    // let files = &*files_handle.clone();
+    // let onadd = {
+    //     let files_handle = files_handle.clone();
+    //     move |file: File| {
+    //         files_handle.update(|files| files.push(file));
+    //     }
+    // };
+
+
     html! {
         <div>
             <div class="bg-blue-500 h-20 flex items-center justify-center text-5xl text-white">{"Holocene Calendar Maker"}</div>
@@ -15,26 +35,44 @@ fn App() -> Html {
             <button onclick={onclick.clone()(1)} class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
                 { "+1" }
             </button>
-            <p>{ value }</p>
+            <p>{ counter }</p>
+            <input type="file" multiple=true onchange={|e: Event| {
+                let mut result = Vec::new();
+                let input: HtmlInputElement = e.target_unchecked_into();
+
+                if let Some(files) = input.files() {
+                    let files = js_sys::try_iter(&files)
+                        .unwrap()
+                        .unwrap()
+                        .map(|v| web_sys::File::from(v.unwrap()))
+                        .map(File::from);
+                    result.extend(files);
+                }
+                info!("{result:?}");
+            }}/>
         </div>
     }
 }
 
 fn main() {
+    wasm_logger::init(wasm_logger::Config::default());
     yew::Renderer::<App>::new().render();
 }
 
+//hooks to grab
+//use_drop -> for sorting the pictures by month
+//
 
-
-
+//[Tasks]
+// convert file loading example to functional style, and probably package as a hook
+// card component to hold picture for each month + optional spot for text
+// maybe find some sort of image editor type thing? mainly for cropping images
 
 // use std::collections::HashMap;
 
-// use web_sys::{Event, HtmlInputElement};
 // use yew::{html, html::TargetCast, Component, Context, Html};
 
 // use gloo_file::callbacks::FileReader;
-// use gloo_file::File;
 
 // type Chunks = bool;
 
@@ -153,6 +191,6 @@ fn main() {
 //     }
 // }
 
-// fn main() {
-//     yew::start_app::<Model>();
-// }
+// // fn main() {
+// //     yew::start_app::<Model>();
+// // }

@@ -10,6 +10,9 @@ gloo-file = "0.2.3"
 js-sys = "0.3.60"
 # this is the development version of Yew
 yew = { git = "https://github.com/yewstack/yew/", features = ["csr"] }
+yew-hooks = "0.1.56"
+wasm-logger = "0.2.0"
+log = "0.4.17"
 
 [dependencies.web-sys]
 version = "0.3"
