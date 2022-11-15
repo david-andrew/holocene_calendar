@@ -1,49 +1,32 @@
 use yew::prelude::*;
 
-enum Msg {
-    AddOne
-}
-
-struct Model {
-    value: i64
-}
-
-impl Component for Model {
-    type Message = Msg;
-    type Properties = ();
-
-    fn create(_ctx: &Context<Self>) -> Self {
-        Self {
-            value: 0
+#[function_component]
+fn App() -> Html {
+    let counter = use_state(|| 0);
+    let onclick = {
+        let counter = counter.clone();
+        move |_| {
+            let value = *counter + 1;
+            counter.set(value);
         }
-    }
+    };
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            Msg::AddOne => {
-                self.value += 1;
-                // the value has changed, so we need to 
-                // re-render for it to appear on the page
-                true
-            }
-        }
-    }
-
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        // This gives us a component's "`Scope`" which allows us to send messages, etc to the component
-        let link = ctx.link();
-        html! {
-            <div>
-                <p class="bg-green-500">{"Test!"}</p>
-                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" onclick={link.callback(|_| Msg::AddOne)}>{ "+1" }</button>
-                <p>{ self.value }</p>
-            </div>
-        }
+    html! {
+        <div>
+            <p class="bg-green-500">{"Test!"}</p>
+            <button 
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" 
+                onclick={onclick}
+            >
+                { "+1" }
+            </button>
+            <p>{ *counter }</p>
+        </div>
     }
 }
 
 fn main() {
-    yew::start_app::<Model>();
+    yew::Renderer::<App>::new().render();
 }
 
 
