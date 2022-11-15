@@ -8,7 +8,7 @@ fn App() -> Html {
     
     html! {
         <div>
-            <p class="bg-green-500">{"Test!"}</p>
+            <div class="bg-blue-500 h-20 flex items-center justify-center text-5xl text-white">{"Holocene Calendar Maker"}</div>
             <button onclick={onclick.clone()(-1)} class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
                 { "-1" }
             </button>
