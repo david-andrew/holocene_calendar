@@ -3,24 +3,19 @@ use yew::prelude::*;
 #[function_component]
 fn App() -> Html {
     let counter = use_state(|| 0);
-    let onclick = {
-        let counter = counter.clone();
-        move |_| {
-            let value = *counter + 1;
-            counter.set(value);
-        }
-    };
-
+    let value = *counter;
+    let onclick = move |_| counter.set(value + 1);
+    
     html! {
         <div>
             <p class="bg-green-500">{"Test!"}</p>
             <button 
-                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded" 
+                class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded" 
                 onclick={onclick}
             >
                 { "+1" }
             </button>
-            <p>{ *counter }</p>
+            <p>{ value }</p>
         </div>
     }
 }
