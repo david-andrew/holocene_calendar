@@ -1,4 +1,5 @@
-use yew::prelude::*;
+// use yew::prelude::*;
+use yew::{function_component, use_state, html, TargetCast};
 // use yew_hooks::{use_list, use_drag_with_options};
 use gloo_file::File;
 use web_sys::{Event, HtmlInputElement};
@@ -6,16 +7,17 @@ use log::info;
 use std::rc::Rc;
 
 
-#[function_component]
-fn App() -> Html {
+#[function_component(App)]
+fn app() -> Html {
     
     // hello world counter
     let counter_handle = use_state(|| 0);
     let counter = *counter_handle;
     let onclick = move |delta: i32| move |_| counter_handle.set(counter + delta);
-
+    
     // list of files
     //TODO: instead of this being a list of files, it should be a list of whatever struct we use for the pictures
+    // let list_handle = use_list::<File>(vec![]);
     let files_handle = use_state::<Rc<Vec<File>>,_>(|| Rc::new(vec![]));
     let onchange = {
         let files_handle = files_handle.clone();
@@ -62,12 +64,12 @@ fn App() -> Html {
 
 fn main() {
     wasm_logger::init(wasm_logger::Config::default());
-    yew::Renderer::<App>::new().render();
+    yew::start_app::<App>();
 }
 
 
-#[function_component]
-fn Card() -> Html {
+#[function_component(Card)]
+fn card() -> Html {
     //simple card component with a picture and a body for text
     html! {
         <div class="max-w-sm bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700">
