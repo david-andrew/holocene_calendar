@@ -3,6 +3,7 @@ use yew::prelude::*;
 use gloo_file::File;
 use web_sys::{Event, HtmlInputElement};
 use log::info;
+use std::rc::Rc;
 
 
 #[function_component]
@@ -14,16 +15,34 @@ fn App() -> Html {
     let onclick = move |delta: i32| move |_| counter_handle.set(counter + delta);
 
     // list of files
-    // let files_handle = use_list::<i32>(|| vec![]);
-    // let list = use_list(vec![1, 2, 3, 4, 5]);
-    // let files_handle = use_state::<Vec<File>, _>(|| vec![]);
-    // let files = &*files_handle.clone();
-    // let onadd = {
-    //     let files_handle = files_handle.clone();
-    //     move |file: File| {
-    //         files_handle.update(|files| files.push(file));
-    //     }
-    // };
+    let files_handle = use_state::<Rc<Vec<File>>,_>(|| Rc::new(vec![]));
+    let onchange = {
+        let files_handle = files_handle.clone();
+        move |e: Event| {
+            let mut result = Vec::new();
+
+            // copy all the existing files into the result
+            for file in (*files_handle).iter() {
+                result.push(file.clone());
+            }
+
+            // grab new files from the event
+            let input: HtmlInputElement = e.target_unchecked_into();
+
+            if let Some(files) = input.files() {
+                let files = js_sys::try_iter(&files)
+                    .unwrap()
+                    .unwrap()
+                    .map(|v| web_sys::File::from(v.unwrap()))
+                    .map(File::from);
+                result.extend(files);
+            }
+            info!("{result:?}");
+            files_handle.set(Rc::new(result));
+        }
+    };
+    
+
 
 
     html! {
@@ -36,20 +55,7 @@ fn App() -> Html {
                 { "+1" }
             </button>
             <p>{ counter }</p>
-            <input type="file" multiple=true onchange={|e: Event| {
-                let mut result = Vec::new();
-                let input: HtmlInputElement = e.target_unchecked_into();
-
-                if let Some(files) = input.files() {
-                    let files = js_sys::try_iter(&files)
-                        .unwrap()
-                        .unwrap()
-                        .map(|v| web_sys::File::from(v.unwrap()))
-                        .map(File::from);
-                    result.extend(files);
-                }
-                info!("{result:?}");
-            }}/>
+            <input type="file" multiple=true onchange={onchange} />
         </div>
     }
 }
