@@ -1,8 +1,12 @@
 use yew::{function_component, use_state, html, TargetCast, Callback, Properties};
 use yew_hooks::{use_list, use_drag_with_options, UseListHandle};
 use gloo_file::{Blob, callbacks::FileReader};
-use web_sys::{Event, HtmlInputElement};
+use web_sys::{Event, HtmlInputElement, DragEvent};
 use log::info;
+
+
+// 1. convert readers list to a set and remove reader when done
+// 2. use better input as input instead of button
 
 
 #[function_component(App)]
@@ -11,7 +15,7 @@ fn app() -> Html {
     //TODO: how to have readers be dropped when they finish adding the image to the list?
     //perhaps have a set of readers, and then remove from the set?
     let readers: UseListHandle<FileReader> = use_list(vec![]);
-    let append_reader = {
+    let add_reader = {
         let readers = readers.clone();
         Callback::from(move |reader: FileReader| {
             readers.push(reader);
@@ -29,13 +33,49 @@ fn app() -> Html {
 
 
     // function for receiving files from input, and adding their data to the list of images
-    let onchange = {
-        move |e: Event| {
+    let onchange = Callback::from(
+        {
+            let add_reader = add_reader.clone();
+            let append_image = append_image.clone();
+            move |e: Event| {
+                
+                // grab new files from the event
+                let input: HtmlInputElement = e.target_unchecked_into();            
+                {
+                    if let Some(files) = input.files() {
+                            // collect all the input files into a vector of blobs
+                        let blobs = js_sys::try_iter(&files)
+                        .unwrap()
+                        .unwrap()
+                        .map(|v| web_sys::File::from(v.unwrap()))
+                        .map(Blob::from)
+                        .collect::<Vec<_>>();
+                        
+                        //create a reader for each file. When the reader is done, add the image data to the list
+                        for blob in blobs.iter() {
+                            let append_image = append_image.clone();
+                            let reader = gloo_file::callbacks::read_as_data_url(&blob.clone(), move |b| {                            
+                                if let Ok(data) = b {
+                                    append_image.emit(data);
+                                }
+                            });
+                            add_reader.emit(reader);
+                        }
+                    }
+                }
+            }
+        }
+    );
 
-            // grab new files from the event
-            let input: HtmlInputElement = e.target_unchecked_into();            
-            {
-                if let Some(files) = input.files() {
+    let ondragover = Callback::from(|e:DragEvent|{e.prevent_default();});
+    let ondrop = Callback::from(
+        {
+            let add_reader = add_reader.clone();
+            let append_image = append_image.clone();
+            move |e:DragEvent| {
+                e.prevent_default();
+                if let Some(files) = e.data_transfer().unwrap().files() {
+                    // collect all the input files into a vector of blobs
                     let blobs = js_sys::try_iter(&files)
                         .unwrap()
                         .unwrap()
@@ -49,23 +89,22 @@ fn app() -> Html {
                         let reader = gloo_file::callbacks::read_as_data_url(&blob.clone(), move |b| {                            
                             if let Ok(data) = b {
                                 append_image.emit(data);
-                                //TODO: remove the reader from the list of readers
                             }
                         });
-                        append_reader.emit(reader);
+                        add_reader.emit(reader);
                     }
                 }
             }
         }
-    };
+    );
 
     
 
     html! {
         <div>
             <div class="bg-blue-500 h-20 flex items-center justify-center text-5xl text-white">{"Holocene Calendar Maker"}</div>
-            <input type="file" multiple=true onchange={onchange} accept="image/*" />
-            <FileInput />
+            // <input type="file" multiple=true onchange={onchange} accept="image/*" />
+            <FileInput onchange={onchange} ondragover={ondragover} ondrop={ondrop} />
             <div class="flex">
                 { for images.current().iter().map(|data| 
                     html! { 
@@ -114,17 +153,28 @@ fn card(props: &CardProps) -> Html {
 }
 
 
+#[derive(Properties, PartialEq)]
+struct InputProps {
+    // multiple: Option<bool>,
+    onchange: Callback<Event>,
+    ondrop: Callback<DragEvent>,
+    ondragover: Callback<DragEvent>,
+    // accept: String //="image/*" 
+}
 #[function_component(FileInput)]
-fn file_input() -> Html {
+fn file_input(props: &InputProps) -> Html {
+    let InputProps {onchange, ondrop, ondragover} = props;
     html! {
-        <div class="flex items-center justify-center w-full">
+        <div class="flex items-center justify-center w-full" 
+            ondragover={ondragover} 
+            ondrop={ondrop}>
             <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
                 <div class="flex flex-col items-center justify-center pt-5 pb-6">
                     <svg aria-hidden="true" class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
                     <p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">{"Click to upload"}</span>{" or drag and drop"}</p>
                     <p class="text-xs text-gray-500 dark:text-gray-400">{"SVG, PNG, JPG or GIF (MAX. 800x400px)"}</p>
                 </div>
-                <input id="dropzone-file" type="file" class="hidden" />
+                <input id="dropzone-file" type="file" class="hidden" onchange={onchange} multiple=true accept="image/*" />
             </label>
         </div>
     } 
