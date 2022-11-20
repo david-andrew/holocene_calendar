@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-gloo-file = "0.2.3"
+gloo-file = { version = "0.2.3", features = ["futures"] }
 js-sys = "0.3.60"
 yew = "0.19.3"
 yew-hooks = "0.1.56"

@@ -1,63 +1,78 @@
-// use yew::prelude::*;
-use yew::{function_component, use_state, html, TargetCast};
-// use yew_hooks::{use_list, use_drag_with_options};
-use gloo_file::File;
+use yew::{function_component, use_state, html, TargetCast, Callback, Properties};
+use yew_hooks::{use_list, use_drag_with_options, UseListHandle};
+use gloo_file::{Blob, callbacks::FileReader};
 use web_sys::{Event, HtmlInputElement};
 use log::info;
-use std::rc::Rc;
 
 
 #[function_component(App)]
 fn app() -> Html {
-    
-    // hello world counter
-    let counter_handle = use_state(|| 0);
-    let counter = *counter_handle;
-    let onclick = move |delta: i32| move |_| counter_handle.set(counter + delta);
-    
-    // list of files
-    //TODO: instead of this being a list of files, it should be a list of whatever struct we use for the pictures
-    // let list_handle = use_list::<File>(vec![]);
-    let files_handle = use_state::<Rc<Vec<File>>,_>(|| Rc::new(vec![]));
-    let onchange = {
-        let files_handle = files_handle.clone();
-        move |e: Event| {
-            let mut result = Vec::new();
 
-            // copy all the existing files into the result
-            for file in (*files_handle).iter() {
-                result.push(file.clone());
-            }
+    //TODO: how to have readers be dropped when they finish adding the image to the list?
+    //perhaps have a set of readers, and then remove from the set?
+    let readers: UseListHandle<FileReader> = use_list(vec![]);
+    let append_reader = {
+        let readers = readers.clone();
+        Callback::from(move |reader: FileReader| {
+            readers.push(reader);
+        })
+    };
+
+
+    let images: UseListHandle<String> = use_list(vec![]);
+    let append_image = {
+        let images = images.clone();
+        Callback::from(move |image: String| {
+            images.push(image);
+        })
+    };
+
+
+    // function for receiving files from input, and adding their data to the list of images
+    let onchange = {
+        move |e: Event| {
 
             // grab new files from the event
-            let input: HtmlInputElement = e.target_unchecked_into();
-
-            if let Some(files) = input.files() {
-                let files = js_sys::try_iter(&files)
-                    .unwrap()
-                    .unwrap()
-                    .map(|v| web_sys::File::from(v.unwrap()))
-                    .map(File::from);
-                result.extend(files);
+            let input: HtmlInputElement = e.target_unchecked_into();            
+            {
+                if let Some(files) = input.files() {
+                    let blobs = js_sys::try_iter(&files)
+                        .unwrap()
+                        .unwrap()
+                        .map(|v| web_sys::File::from(v.unwrap()))
+                        .map(Blob::from)
+                        .collect::<Vec<_>>();
+                    
+                    //create a reader for each file. When the reader is done, add the image data to the list
+                    for blob in blobs.iter() {
+                        let append_image = append_image.clone();
+                        let reader = gloo_file::callbacks::read_as_data_url(&blob.clone(), move |b| {                            
+                            if let Ok(data) = b {
+                                append_image.emit(data);
+                                //TODO: remove the reader from the list of readers
+                            }
+                        });
+                        append_reader.emit(reader);
+                    }
+                }
             }
-            info!("{result:?}");
-            files_handle.set(Rc::new(result));
         }
     };
+
     
 
     html! {
         <div>
             <div class="bg-blue-500 h-20 flex items-center justify-center text-5xl text-white">{"Holocene Calendar Maker"}</div>
-            <button onclick={onclick.clone()(-1)} class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-                { "-1" }
-            </button>
-            <button onclick={onclick.clone()(1)} class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                { "+1" }
-            </button>
-            <p>{ counter }</p>
-            <input type="file" multiple=true onchange={onchange} />
-            <Card/>
+            <input type="file" multiple=true onchange={onchange} accept="image/*" />
+            <FileInput />
+            <div class="flex">
+                { for images.current().iter().map(|data| 
+                    html! { 
+                        <Card src={data.clone()} />
+                    }
+                ) }
+            </div>
         </div>
     }
 }
@@ -67,33 +82,53 @@ fn main() {
     yew::start_app::<App>();
 }
 
+#[derive(Properties, PartialEq)]
+struct CardProps {
+    src: String,
+}
 
 #[function_component(Card)]
-fn card() -> Html {
+fn card(props: &CardProps) -> Html {
     //simple card component with a picture and a body for text
     html! {
         <div class="max-w-sm bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700">
-        <a href="#">
-            <img class="rounded-t-lg" src="https://flowbite.com/docs/images/blog/image-1.jpg" alt="" />
-        </a>
-        <div class="p-5">
             <a href="#">
-                <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{"Noteworthy technology acquisitions 2021"}</h5>
+                <img class="rounded-t-lg" src={props.src.clone()} alt="" />
             </a>
-            <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
-                {"Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order."}
-            </p>
-            <a href="#" class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                {"Read more"}
-                <svg aria-hidden="true" class="w-4 h-4 ml-2 -mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                    <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
-            </a>
-        </div>
+            <div class="p-5">
+                <a href="#">
+                    <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{"Noteworthy technology acquisitions 2021"}</h5>
+                </a>
+                <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
+                    {"Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order."}
+                </p>
+                <a href="#" class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                    {"Read more"}
+                    <svg aria-hidden="true" class="w-4 h-4 ml-2 -mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                    </svg>
+                </a>
+            </div>
         </div>
     }
 }
 
+
+#[function_component(FileInput)]
+fn file_input() -> Html {
+    html! {
+        <div class="flex items-center justify-center w-full">
+            <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-bray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600">
+                <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg aria-hidden="true" class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <p class="mb-2 text-sm text-gray-500 dark:text-gray-400"><span class="font-semibold">{"Click to upload"}</span>{" or drag and drop"}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{"SVG, PNG, JPG or GIF (MAX. 800x400px)"}</p>
+                </div>
+                <input id="dropzone-file" type="file" class="hidden" />
+            </label>
+        </div>
+    } 
+}
 
 
 //hooks to grab
