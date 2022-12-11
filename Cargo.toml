@@ -8,8 +8,8 @@ edition = "2021"
 [dependencies]
 gloo-file = { version = "0.2.3", features = ["futures"] }
 js-sys = "0.3.60"
-yew = "0.19.3"
-yew-hooks = "0.1.56"
+yew = "0.20.0"
+yew-hooks = "0.2.0"
 wasm-logger = "0.2.0"
 log = "0.4.17"
 

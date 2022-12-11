@@ -1,4 +1,4 @@
-use yew::{function_component, use_state, html, TargetCast, Callback, Properties};
+use yew::{function_component, use_state, html, Html, TargetCast, Callback, Properties};
 use yew_hooks::{use_list, use_drag_with_options, UseListHandle};
 use gloo_file::{Blob, callbacks::FileReader};
 use web_sys::{Event, HtmlInputElement, DragEvent};
@@ -30,6 +30,13 @@ use log::info;
 // picking which holidays are included and their names should be handled in a modal
 // ---> basically all global settings will be from a settings modal
 
+
+
+
+//[Resources]
+// - https://developer.mozilla.org/en-US/docs/Web/CSS/break-after / https://www.w3schools.com/csSref/pr_print_pageba.php
+//   --> for displaying output pdf for printing
+//
 
 
 #[function_component(App)]
@@ -156,7 +163,7 @@ fn app() -> Html {
 
 fn main() {
     wasm_logger::init(wasm_logger::Config::default());
-    yew::start_app::<App>();
+    yew::Renderer::<App>::new().render();
 }
 
 #[derive(Properties, PartialEq)]
@@ -221,3 +228,26 @@ fn file_input(props: &InputProps) -> Html {
     } 
 }
 
+#[derive(Properties, PartialEq)]
+struct DraggableListProps {
+    //children
+    //function to change the ordering of the children -> tbd how best to do sorting with rust
+}
+#[function_component(DraggableList)]
+fn draggable_list(props: &DraggableListProps) -> Html {
+    //TODO: is it possible to do this without a copy list of all the children?
+    
+    // steps:
+    // - user clicks on an item, and starts dragging
+    // - item user grabbed is replaced with a blank place holder that keeps its space
+    // - all other items are replaced with copies that look like them, while the original list is hidden
+    //    -> so that we can move the items around without affecting the original list which contained the item that was grabbed
+    // - note that each copy has an ondragover listener which we use to update the sorting of the copy list
+    // - when the item hovers over the location of another item, the ordering of the copy list is updated with the placholder in the new location
+    //    -> this could be css animated, or could be instant snapping into place
+    // - when the item is dropped, the original list is updated with the new ordering from the copy list. The copy list is hidden, and the original list is shown again
+    
+    html! {
+        <></>
+    }
+}
