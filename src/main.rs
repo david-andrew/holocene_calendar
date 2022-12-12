@@ -9,7 +9,7 @@ use log::info;
 // 2. make loading images truncate if more than 12 total are added
 // 3. specify aspect ratio of pictures/calendar -> use for shape of images in cards
 // 4. draggable/sortable cards
-
+// 5. editable poem text (owned by main component), appears in textbox on card
 
 // 1. draggable cards
 
@@ -189,13 +189,14 @@ struct CardProps {
     src: String,
     title: String,
     poem: Option<String>,
+    setpoem: Option<Callback<String>>,
     onclose: Option<Callback<()>>,
 }
 
 #[function_component]
 fn Card(props: &CardProps) -> Html {
 
-    let CardProps {src, title, poem, onclose} = props;
+    let CardProps {src, title, poem, setpoem, onclose} = props;
 
     //simple card component with a picture and a body for text
     html! {
@@ -207,8 +208,12 @@ fn Card(props: &CardProps) -> Html {
                         onclose.emit(());
                     });
                     html! {
-                        <button class="absolute -right-4 -top-4 bg-red-500 hover:bg-red-700 text-white text-2xl rounded-full w-10 h-10 z-10" onclick={onclick}>
-                            {"×"}
+                        <button class="absolute -right-4 -top-4 z-10 text-white bg-red-500 hover:bg-red-700 font-medium rounded-full text-sm p-2.5 text-center inline-flex items-center mr-2" onclick={onclick}>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            <span class="sr-only">{"Remove Card"}</span>
+
                         </button>
                     }
                 } else {
@@ -222,7 +227,7 @@ fn Card(props: &CardProps) -> Html {
                 <div class="p-5">
                     <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{title.clone()}</h5>
                     <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
-                        {"Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order."}
+                        {poem.clone().unwrap_or_else(|| "No poem".to_string())}
                     </p>
                 </div>
             </div>
