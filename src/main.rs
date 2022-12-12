@@ -1,10 +1,16 @@
-use yew::{function_component, use_state, html, Html, TargetCast, Callback, Properties};
+use yew::{function_component, use_state, html, Html, TargetCast, MouseEvent, Callback, Properties};
 use yew_hooks::{use_list, use_drag_with_options, UseListHandle};
 use gloo_file::{Blob, callbacks::FileReader};
 use web_sys::{Event, HtmlInputElement, DragEvent};
 use log::info;
 
 // [Tasks]
+// 1. add x to cards so you can remove ones that have been added
+// 2. make loading images truncate if more than 12 total are added
+// 3. specify aspect ratio of pictures/calendar -> use for shape of images in cards
+// 4. draggable/sortable cards
+
+
 // 1. draggable cards
 
 // > 1...
@@ -39,8 +45,8 @@ use log::info;
 //
 
 
-#[function_component(App)]
-fn app() -> Html {
+#[function_component]
+fn App() -> Html {
 
     let months: Vec<String> = [
         "January",
@@ -148,12 +154,24 @@ fn app() -> Html {
     html! {
         <div>
             <div class="bg-blue-500 h-20 flex items-center justify-center text-5xl text-white">{"Holocene Calendar Maker"}</div>
-            // <input type="file" multiple=true onchange={onchange} accept="image/*" />
-            <FileInput onchange={onchange} ondragover={ondragover} ondrop={ondrop} />
-            <div class="flex flex-wrap">
-                { for images.current().iter().zip(months).map(|(data, month)| 
+            { // show the file input only if there are less than 12 images
+                if images.current().len() < 12 {
+                    html! { <FileInput onchange={onchange} ondragover={ondragover} ondrop={ondrop} />} 
+                } else {
+                    html! {<></>}
+                }
+            }
+            <div class="flex flex-wrap justify-center">
+                { for images.current().iter().zip(months).enumerate().map(|(i, (data, month))| 
                     html! { 
-                        <Card src={data.clone()} title={month} />
+                        <Card src={data.clone()} title={month} poem={"this is my poem"} 
+                            onclose={
+                                let images = images.clone();
+                                Callback::from(move |_| {
+                                    images.remove(i);
+                                })
+                            }
+                        />
                     }
                 ) }
             </div>
@@ -171,32 +189,42 @@ struct CardProps {
     src: String,
     title: String,
     poem: Option<String>,
+    onclose: Option<Callback<()>>,
 }
 
-#[function_component(Card)]
-fn card(props: &CardProps) -> Html {
+#[function_component]
+fn Card(props: &CardProps) -> Html {
 
-    let CardProps {src, title, poem} = props;
+    let CardProps {src, title, poem, onclose} = props;
 
     //simple card component with a picture and a body for text
     html! {
-        <div class="max-w-sm bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700">
-            <a href="#">
-                <img class="rounded-t-lg" src={src.clone()} alt="" />
-            </a>
-            <div class="p-5">
+        <div class="relative">
+            { // if there is a close button, show it
+                if let Some(onclose) = onclose {
+                    let onclose = onclose.clone();
+                    let onclick = Callback::from(move |_| {
+                        onclose.emit(());
+                    });
+                    html! {
+                        <button class="absolute -right-4 -top-4 bg-red-500 hover:bg-red-700 text-white text-2xl rounded-full w-10 h-10 z-10" onclick={onclick}>
+                            {"×"}
+                        </button>
+                    }
+                } else {
+                    html! {<></>}
+                }
+            }
+            <div class="max-w-sm bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700">
                 <a href="#">
+                    <img class="rounded-t-lg" src={src.clone()} alt="" />
+                </a>
+                <div class="p-5">
                     <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{title.clone()}</h5>
-                </a>
-                <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
-                    {"Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order."}
-                </p>
-                <a href="#" class="inline-flex items-center px-3 py-2 text-sm font-medium text-center text-white bg-blue-700 rounded-lg hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
-                    {"Read more"}
-                    <svg aria-hidden="true" class="w-4 h-4 ml-2 -mr-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                        <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                    </svg>
-                </a>
+                    <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
+                        {"Here are the biggest enterprise technology acquisitions of 2021 so far, in reverse chronological order."}
+                    </p>
+                </div>
             </div>
         </div>
     }
@@ -209,8 +237,8 @@ struct InputProps {
     ondrop: Callback<DragEvent>,
     ondragover: Callback<DragEvent>,
 }
-#[function_component(FileInput)]
-fn file_input(props: &InputProps) -> Html {
+#[function_component]
+fn FileInput(props: &InputProps) -> Html {
     let InputProps {onchange, ondrop, ondragover} = props;
     html! {
         <div class="flex items-center justify-center w-full" 
@@ -233,8 +261,8 @@ struct DraggableListProps {
     //children
     //function to change the ordering of the children -> tbd how best to do sorting with rust
 }
-#[function_component(DraggableList)]
-fn draggable_list(props: &DraggableListProps) -> Html {
+#[function_component]
+fn DraggableList(props: &DraggableListProps) -> Html {
     //TODO: is it possible to do this without a copy list of all the children?
     
     // steps:
