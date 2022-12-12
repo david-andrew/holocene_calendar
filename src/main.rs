@@ -5,8 +5,6 @@ use web_sys::{Event, HtmlInputElement, DragEvent};
 use log::info;
 
 // [Tasks]
-// 1. add x to cards so you can remove ones that have been added
-// 2. make loading images truncate if more than 12 total are added
 // 3. specify aspect ratio of pictures/calendar -> use for shape of images in cards
 // 4. draggable/sortable cards
 // 5. editable poem text (owned by main component), appears in textbox on card
@@ -78,7 +76,9 @@ fn App() -> Html {
     let append_image = {
         let images = images.clone();
         Callback::from(move |image: String| {
-            images.push(image);
+            if images.current().len() < 12 {
+                images.push(image);
+            }
         })
     };
 
