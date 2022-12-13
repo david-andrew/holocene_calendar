@@ -300,58 +300,74 @@ fn DraggableList(props: &DraggableListProps) -> Html {
         <div class="flex flex-wrap justify-center">
             { for props.children.iter().enumerate().map(|(i,child)| html! {
                 <>
-                    {
-                        if *dragging.clone() && *over_index.clone() == i {
-                            html! {
-                                <div class="flex justify-center w-96 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700"></div>
-                            }
-                        } else {
-                            html! {
-                                <></>
-                            }
-                        }
-                        
-                    }
-                    <div class="border-2 border-green-300" draggable="true" 
-                        ondragstart={
-                            let dragging_handle = dragging.clone();
-                            let holding_index = holding_index.clone();
-                            Callback::from(move |e:DragEvent| {
-                                dragging_handle.set(true);
-                                holding_index.set(i);
-                            }
-                        )}
-                        ondragend={
-                            let dragging_handle = dragging.clone();
-                            // let index_handle = index_handle.clone();
-                            Callback::from(move |e:DragEvent| {
-                                dragging_handle.set(false);
-                                // index_handle.set(0);
-                            }
-                        )}
-                        ondragover={
-                            // let dragging_handle = dragging_handle.clone();
-                            let over_index = over_index.clone();
-                            Callback::from(move |e:DragEvent| {
-                                e.prevent_default();
-                                over_index.set(i);
-                            }
-                        )}
-                    >
-                    //TODO: figure out some way to wrap the children here so that they are all not draggable
-                    //       for now, have to manually add draggable="false" to each child
-                        <div>
-                            { if !*dragging.clone() || *holding_index.clone() != i {
-                                    child
-                            } else {
-                                html! {
-                                    // <div class="invisible">{child}</div>
-                                    <></>
-                                }
-                            }}
-                            // {child}
+                    // div wrapping around the child
+                    <div>
+                        //left and right areas to detect hovering
+                        <div class="relative w-full h-full">
+                            <div class="absolute left-0 top-0 w-full h-full z-10">
+                                <div class="absolute left-0 top-0 w-1/2 h-full" 
+                                    //on drag for left side
+                                ></div>
+                                <div class="absolute right-0 top-0 w-1/2 h-full" 
+                                    //on drag for right side
+                                ></div>
+                            </div>
+                            {child}
                         </div>
                     </div>
+
+                    // {
+                    //     if *dragging.clone() && *over_index.clone() == i {
+                    //         html! {
+                    //             <div class="flex justify-center w-96 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700"></div>
+                    //         }
+                    //     } else {
+                    //         html! {
+                    //             <></>
+                    //         }
+                    //     }
+                        
+                    // }
+                    // <div class="border-2 border-green-300" draggable="true" 
+                    //     ondragstart={
+                    //         let dragging_handle = dragging.clone();
+                    //         let holding_index = holding_index.clone();
+                    //         Callback::from(move |e:DragEvent| {
+                    //             dragging_handle.set(true);
+                    //             holding_index.set(i);
+                    //         }
+                    //     )}
+                    //     ondragend={
+                    //         let dragging_handle = dragging.clone();
+                    //         // let index_handle = index_handle.clone();
+                    //         Callback::from(move |e:DragEvent| {
+                    //             dragging_handle.set(false);
+                    //             // index_handle.set(0);
+                    //         }
+                    //     )}
+                    //     ondragover={
+                    //         // let dragging_handle = dragging_handle.clone();
+                    //         let over_index = over_index.clone();
+                    //         Callback::from(move |e:DragEvent| {
+                    //             e.prevent_default();
+                    //             over_index.set(i);
+                    //         }
+                    //     )}
+                    // >
+                    // //TODO: figure out some way to wrap the children here so that they are all not draggable
+                    // //       for now, have to manually add draggable="false" to each child
+                    //     <div>
+                    //         { if !*dragging.clone() || *holding_index.clone() != i {
+                    //                 child
+                    //         } else {
+                    //             html! {
+                    //                 // <div class="invisible">{child}</div>
+                    //                 <></>
+                    //             }
+                    //         }}
+                    //         // {child}
+                    //     </div>
+                    // </div>
                 </>
             }) }
         </div>
