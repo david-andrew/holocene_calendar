@@ -1,4 +1,4 @@
-use yew::{function_component, use_state, html, Html, TargetCast, MouseEvent, Callback, Properties};
+use yew::{function_component, use_state, html, Html, TargetCast, MouseEvent, Callback, Properties, AttrValue, Children};
 use yew_hooks::{use_list, use_drag_with_options, UseListHandle};
 use gloo_file::{Blob, callbacks::FileReader};
 use web_sys::{Event, HtmlInputElement, DragEvent};
@@ -45,6 +45,9 @@ use log::info;
 
 #[function_component]
 fn App() -> Html {
+
+    //TODO: allow aspect ratio to be set-able
+    let img_aspect_ratio = 13.0/19.0;
 
     let months: Vec<String> = [
         "January",
@@ -161,10 +164,24 @@ fn App() -> Html {
                     html! {<></>}
                 }
             }
-            <div class="flex flex-wrap justify-center">
+            // <div class="flex flex-wrap justify-center">
+            //     { for images.current().iter().zip(months).enumerate().map(|(i, (data, month))| 
+            //         html! { 
+            //             <Card src={data.clone()} title={month} poem={"this is my poem"} //setpoem={None} img_aspect={img_aspect_ratio} 
+            //                 onclose={
+            //                     let images = images.clone();
+            //                     Callback::from(move |_| {
+            //                         images.remove(i);
+            //                     })
+            //                 }
+            //             />
+            //         }
+            //     ) }
+            // </div>
+            <DraggableList>
                 { for images.current().iter().zip(months).enumerate().map(|(i, (data, month))| 
                     html! { 
-                        <Card src={data.clone()} title={month} poem={"this is my poem"} 
+                        <Card src={data.clone()} title={month} poem={"this is my poem"} //setpoem={None} img_aspect={img_aspect_ratio} 
                             onclose={
                                 let images = images.clone();
                                 Callback::from(move |_| {
@@ -174,7 +191,7 @@ fn App() -> Html {
                         />
                     }
                 ) }
-            </div>
+            </DraggableList>
         </div>
     }
 }
@@ -184,26 +201,32 @@ fn main() {
     yew::Renderer::<App>::new().render();
 }
 
-#[derive(Properties, PartialEq)]
+
+#[derive(Properties, PartialEq, Clone)]
 struct CardProps {
-    src: String,
-    title: String,
-    poem: Option<String>,
-    setpoem: Option<Callback<String>>,
+    src: AttrValue,
+    #[prop_or(1.0)]
+    img_aspect: f64,
+    title: AttrValue,
+    #[prop_or(None)]
+    poem: Option<AttrValue>,
+    #[prop_or(None)]
+    setpoem: Option<Callback<AttrValue>>,
+    #[prop_or(None)]
     onclose: Option<Callback<()>>,
 }
 
 #[function_component]
 fn Card(props: &CardProps) -> Html {
 
-    let CardProps {src, title, poem, setpoem, onclose} = props;
+    let CardProps {src, img_aspect, title, poem, setpoem, onclose} = props.clone();
 
     //simple card component with a picture and a body for text
     html! {
         <div class="relative">
             { // if there is a close button, show it
                 if let Some(onclose) = onclose {
-                    let onclose = onclose.clone();
+                    // let onclose = onclose.clone();
                     let onclick = Callback::from(move |_| {
                         onclose.emit(());
                     });
@@ -220,14 +243,14 @@ fn Card(props: &CardProps) -> Html {
                     html! {<></>}
                 }
             }
-            <div class="max-w-sm bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700">
-                <a href="#">
-                    <img class="rounded-t-lg" src={src.clone()} alt="" />
-                </a>
+            <div class="max-w-sm bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700" draggable="false">
+                // <a href="#">
+                <img class="rounded-t-lg" src={src.clone()} alt="" draggable="false"/>
+                // </a>
                 <div class="p-5">
                     <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">{title.clone()}</h5>
                     <p class="mb-3 font-normal text-gray-700 dark:text-gray-400">
-                        {poem.clone().unwrap_or_else(|| "No poem".to_string())}
+                        {poem.clone().unwrap_or_else(|| AttrValue::from("No poem"))}
                     </p>
                 </div>
             </div>
@@ -261,26 +284,95 @@ fn FileInput(props: &InputProps) -> Html {
     } 
 }
 
-#[derive(Properties, PartialEq)]
+#[derive(Properties, PartialEq, Clone)]
 struct DraggableListProps {
-    //children
+    children: Children,
     //function to change the ordering of the children -> tbd how best to do sorting with rust
 }
 #[function_component]
 fn DraggableList(props: &DraggableListProps) -> Html {
-    //TODO: is it possible to do this without a copy list of all the children?
     
-    // steps:
-    // - user clicks on an item, and starts dragging
-    // - item user grabbed is replaced with a blank place holder that keeps its space
-    // - all other items are replaced with copies that look like them, while the original list is hidden
-    //    -> so that we can move the items around without affecting the original list which contained the item that was grabbed
-    // - note that each copy has an ondragover listener which we use to update the sorting of the copy list
-    // - when the item hovers over the location of another item, the ordering of the copy list is updated with the placholder in the new location
-    //    -> this could be css animated, or could be instant snapping into place
-    // - when the item is dropped, the original list is updated with the new ordering from the copy list. The copy list is hidden, and the original list is shown again
-    
+    let dragging = use_state(|| false);
+    let holding_index = use_state(|| 0);
+    let over_index = use_state(|| 0);
+
     html! {
-        <></>
+        <div class="flex flex-wrap justify-center">
+            { for props.children.iter().enumerate().map(|(i,child)| html! {
+                <>
+                    {
+                        if *dragging.clone() && *over_index.clone() == i {
+                            html! {
+                                <div class="flex justify-center w-96 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700"></div>
+                            }
+                        } else {
+                            html! {
+                                <></>
+                            }
+                        }
+                        
+                    }
+                    <div class="border-2 border-green-300" draggable="true" 
+                        ondragstart={
+                            let dragging_handle = dragging.clone();
+                            let holding_index = holding_index.clone();
+                            Callback::from(move |e:DragEvent| {
+                                dragging_handle.set(true);
+                                holding_index.set(i);
+                            }
+                        )}
+                        ondragend={
+                            let dragging_handle = dragging.clone();
+                            // let index_handle = index_handle.clone();
+                            Callback::from(move |e:DragEvent| {
+                                dragging_handle.set(false);
+                                // index_handle.set(0);
+                            }
+                        )}
+                        ondragover={
+                            // let dragging_handle = dragging_handle.clone();
+                            let over_index = over_index.clone();
+                            Callback::from(move |e:DragEvent| {
+                                e.prevent_default();
+                                over_index.set(i);
+                            }
+                        )}
+                    >
+                    //TODO: figure out some way to wrap the children here so that they are all not draggable
+                    //       for now, have to manually add draggable="false" to each child
+                        <div>
+                            { if !*dragging.clone() || *holding_index.clone() != i {
+                                    child
+                            } else {
+                                html! {
+                                    // <div class="invisible">{child}</div>
+                                    <></>
+                                }
+                            }}
+                            // {child}
+                        </div>
+                    </div>
+                </>
+            }) }
+        </div>
     }
 }
+
+
+// #[derive(Properties, PartialEq, Clone)]
+// struct DraggableProps {
+//     children: Children,
+//     ondragstart: Callback<DragEvent>,
+//     on
+// }
+// #[function_component]
+// fn Draggable(props: &DraggableProps) -> Html {
+//     // for now, just draw a border around each child, and center the content vertically inside the border
+//     // also prevent clicks from propagating to the child
+    
+//     html! {
+//         <div class="border-2 border-green-300" draggable="true" ondragstart={props.ondragstart}>
+//             {props.children.clone()}
+//         </div>
+//     }
+// }
