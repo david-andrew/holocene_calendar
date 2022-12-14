@@ -359,6 +359,7 @@ fn DraggableList(props: &DraggableListProps) -> Html {
                                 let dragging = dragging.clone();
                                 Callback::from(move |e:DragEvent| {
                                     dragging.set(false);
+                                    //TODO: set the new order of the children via the callback
                                 })
                             }
                         >
