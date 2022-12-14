@@ -1,7 +1,7 @@
-use yew::{function_component, use_state, html, Html, TargetCast, MouseEvent, Callback, Properties, AttrValue, Children};
+use yew::{function_component, use_state, html, Html, TargetCast, MouseEvent, Callback, Properties, AttrValue, Children, use_node_ref};
 use yew_hooks::{use_list, use_drag_with_options, UseListHandle};
 use gloo_file::{Blob, callbacks::FileReader};
-use web_sys::{Event, HtmlInputElement, DragEvent};
+use web_sys::{Event, HtmlInputElement, HtmlElement, DragEvent};
 use log::info;
 
 // [Tasks]
@@ -289,32 +289,115 @@ struct DraggableListProps {
     children: Children,
     //function to change the ordering of the children -> tbd how best to do sorting with rust
 }
+
+#[derive(Clone, Copy, PartialEq)]
+enum DragSide {
+    Left,
+    Right,
+}
+#[derive(Clone)]
+struct DragState {
+    holding_index: usize,
+    over_index: usize,
+    side: DragSide,
+}
+
 #[function_component]
 fn DraggableList(props: &DraggableListProps) -> Html {
     
     let dragging = use_state(|| false);
-    let holding_index = use_state(|| 0);
-    let over_index = use_state(|| 0);
+    let drag_state = use_state(|| DragState {
+        holding_index: 0,
+        over_index: 0,
+        side: DragSide::Left,
+    });
+    // let num_children = props.children.len();
+    let container_ref = use_node_ref();
 
     html! {
-        <div class="flex flex-wrap justify-center">
-            { for props.children.iter().enumerate().map(|(i,child)| html! {
+        // <div class="relative">
+        <div class="relative flex flex-wrap justify-center" ref={container_ref.clone()}>
+            <div class="absolute left-0 top-0 w-full h-full -z-10 bg-white"/>
+            { for props.children.iter().enumerate().map(|(i, child)| html! {
                 <>
+                    //left placeholder area
+                    {{
+                        let dragging = *(dragging.clone());
+                        let DragState {holding_index:_, over_index, side} = *(drag_state.clone());
+                        if dragging && over_index == i && side == DragSide::Left {
+                            html! {
+                                <div class="flex justify-center w-96 bg-white"></div>
+                            }
+                        } else {
+                            html! {
+                                <></>
+                            }
+                        }
+                    }}
                     // div wrapping around the child
                     <div>
                         //left and right areas to detect hovering
-                        <div class="relative w-full h-full">
+                        <div class="relative w-full h-full" draggable="true"
+                            ondragstart={
+                                let dragging = dragging.clone();
+                                let drag_state = drag_state.clone();
+                                // let container_ref = container_ref.clone();
+                                Callback::from(move |e:DragEvent| {
+                                    dragging.set(true);
+                                    drag_state.set(DragState {
+                                        holding_index: i,
+                                        over_index: i,
+                                        side: DragSide::Left//if i < num_children - 1 {DragSide::Left} else {DragSide::Right},
+                                    });
+                                    //get the dimensions of the div container
+                                    // let container = container_ref.cast::<HtmlElement>().unwrap();
+                                    // container
+
+                                })
+                            }
+                            ondragend={
+                                let dragging = dragging.clone();
+                                Callback::from(move |e:DragEvent| {
+                                    dragging.set(false);
+                                })
+                            }
+                        >
                             <div class="absolute left-0 top-0 w-full h-full z-10">
                                 <div class="absolute left-0 top-0 w-1/2 h-full" 
                                     //on drag for left side
+                                    
                                 ></div>
                                 <div class="absolute right-0 top-0 w-1/2 h-full" 
                                     //on drag for right side
                                 ></div>
                             </div>
-                            {child}
+                            {{
+                                let dragging = dragging.clone();
+                                let drag_state = drag_state.clone();
+                                let hide = *dragging && (*drag_state).holding_index == i;
+                                html! {
+                                    <div class={if hide {"absolute -left-96 w-96 -z-20"} else {"relative"}}>                                        
+                                        {child}
+                                    </div>
+                                }
+                            }}
                         </div>
                     </div>
+
+                    //right placeholder area
+                    {{
+                        let dragging = *(dragging.clone());
+                        let DragState {holding_index:_, over_index, side} = *(drag_state.clone());
+                        if dragging && over_index == i && side == DragSide::Right {
+                            html! {
+                                <div class="flex justify-center w-96 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700"></div>
+                            }
+                        } else {
+                            html! {
+                                <></>
+                            }
+                        }
+                    }}
 
                     // {
                     //     if *dragging.clone() && *over_index.clone() == i {
@@ -371,6 +454,7 @@ fn DraggableList(props: &DraggableListProps) -> Html {
                 </>
             }) }
         </div>
+        // </div>
     }
 }
 
