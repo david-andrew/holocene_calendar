@@ -85,6 +85,17 @@ fn App() -> Html {
         })
     };
 
+    //callback for when a user drags a card to a new position
+    let onreposition = Callback::from(
+        {
+            let images = images.clone();
+            move |(old_index, new_index): (usize, usize)| {
+                let image = images.remove(old_index);
+                images.insert(new_index, image);
+            }
+        }
+    );
+
 
     // function for receiving files from input, and adding their data to the list of images
     let onchange = Callback::from(
@@ -178,7 +189,7 @@ fn App() -> Html {
             //         }
             //     ) }
             // </div>
-            <DraggableList>
+            <DraggableList onreposition={onreposition}>
                 { for images.current().iter().zip(months).enumerate().map(|(i, (data, month))| 
                     html! { 
                         <Card src={data.clone()} title={month} poem={"this is my poem"} //setpoem={None} img_aspect={img_aspect_ratio} 
@@ -287,7 +298,7 @@ fn FileInput(props: &InputProps) -> Html {
 #[derive(Properties, PartialEq, Clone)]
 struct DraggableListProps {
     children: Children,
-    //function to change the ordering of the children -> tbd how best to do sorting with rust
+    onreposition: Callback<(usize, usize)>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -305,6 +316,8 @@ struct DragState {
 #[function_component]
 fn DraggableList(props: &DraggableListProps) -> Html {
     
+    let DraggableListProps {children, onreposition} = props.clone();
+    
     let dragging = use_state(|| false);
     let drag_state = use_state(|| DragState {
         holding_index: 0,
@@ -315,10 +328,11 @@ fn DraggableList(props: &DraggableListProps) -> Html {
     // let container_ref = use_node_ref();
 
     html! {
-        // <div class="relative">
         <div class="relative flex flex-wrap justify-center">// ref={container_ref.clone()}>
-            <div class="absolute left-0 top-0 w-full h-full -z-10 bg-white"/>
-            { for props.children.iter().enumerate().map(|(i, child)| html! {
+            <div class="absolute left-0 top-0 w-full h-full -z-10 bg-white"
+                
+            />
+            { for children.iter().enumerate().map(|(i, child)| html! {
                 <>
                     //left placeholder area
                     {{
@@ -326,7 +340,14 @@ fn DraggableList(props: &DraggableListProps) -> Html {
                         let DragState {holding_index:_, over_index, side} = *(drag_state.clone());
                         if dragging && over_index == i && side == DragSide::Left {
                             html! {
-                                <div class="flex justify-center w-96 bg-white"></div>
+                                <div class="flex justify-center w-96 bg-white"
+                                    ondragenter={Callback::from(move |e:DragEvent| {
+                                        e.prevent_default();
+                                    })}
+                                    ondragover={Callback::from(move |e:DragEvent| {
+                                        e.prevent_default();
+                                    })}
+                                />
                             }
                         } else {
                             html! {
@@ -357,9 +378,24 @@ fn DraggableList(props: &DraggableListProps) -> Html {
                             }
                             ondragend={
                                 let dragging = dragging.clone();
+                                let drag_state = drag_state.clone();
+                                let onreposition = onreposition.clone();
                                 Callback::from(move |e:DragEvent| {
                                     dragging.set(false);
-                                    //TODO: set the new order of the children via the callback
+                                    let DragState {holding_index, over_index, side} = *drag_state;
+                                    let mut final_index = over_index;
+                                    if side == DragSide::Right {
+                                        if final_index < holding_index {
+                                            final_index += 1;
+                                        }
+                                    } else {
+                                        if final_index > holding_index {
+                                            final_index -= 1;
+                                        }
+                                    }
+                                    if holding_index != final_index {
+                                        onreposition.emit((holding_index, final_index));
+                                    }
                                 })
                             }
                         >
@@ -423,7 +459,14 @@ fn DraggableList(props: &DraggableListProps) -> Html {
                         let DragState {holding_index:_, over_index, side} = *(drag_state.clone());
                         if dragging && over_index == i && side == DragSide::Right {
                             html! {
-                                <div class="flex justify-center w-96 bg-white"></div>
+                                <div class="flex justify-center w-96 bg-white"
+                                    ondragenter={Callback::from(move |e:DragEvent| {
+                                        e.prevent_default();
+                                    })}
+                                    ondragover={Callback::from(move |e:DragEvent| {
+                                        e.prevent_default();
+                                    })}
+                                />
                             }
                         } else {
                             html! {
@@ -431,81 +474,8 @@ fn DraggableList(props: &DraggableListProps) -> Html {
                             }
                         }
                     }}
-
-                    // {
-                    //     if *dragging.clone() && *over_index.clone() == i {
-                    //         html! {
-                    //             <div class="flex justify-center w-96 bg-white border border-gray-200 rounded-lg shadow-md dark:bg-gray-800 dark:border-gray-700"></div>
-                    //         }
-                    //     } else {
-                    //         html! {
-                    //             <></>
-                    //         }
-                    //     }
-                        
-                    // }
-                    // <div class="border-2 border-green-300" draggable="true" 
-                    //     ondragstart={
-                    //         let dragging_handle = dragging.clone();
-                    //         let holding_index = holding_index.clone();
-                    //         Callback::from(move |e:DragEvent| {
-                    //             dragging_handle.set(true);
-                    //             holding_index.set(i);
-                    //         }
-                    //     )}
-                    //     ondragend={
-                    //         let dragging_handle = dragging.clone();
-                    //         // let index_handle = index_handle.clone();
-                    //         Callback::from(move |e:DragEvent| {
-                    //             dragging_handle.set(false);
-                    //             // index_handle.set(0);
-                    //         }
-                    //     )}
-                    //     ondragover={
-                    //         // let dragging_handle = dragging_handle.clone();
-                    //         let over_index = over_index.clone();
-                    //         Callback::from(move |e:DragEvent| {
-                    //             e.prevent_default();
-                    //             over_index.set(i);
-                    //         }
-                    //     )}
-                    // >
-                    // //TODO: figure out some way to wrap the children here so that they are all not draggable
-                    // //       for now, have to manually add draggable="false" to each child
-                    //     <div>
-                    //         { if !*dragging.clone() || *holding_index.clone() != i {
-                    //                 child
-                    //         } else {
-                    //             html! {
-                    //                 // <div class="invisible">{child}</div>
-                    //                 <></>
-                    //             }
-                    //         }}
-                    //         // {child}
-                    //     </div>
-                    // </div>
                 </>
             }) }
         </div>
-        // </div>
     }
 }
-
-
-// #[derive(Properties, PartialEq, Clone)]
-// struct DraggableProps {
-//     children: Children,
-//     ondragstart: Callback<DragEvent>,
-//     on
-// }
-// #[function_component]
-// fn Draggable(props: &DraggableProps) -> Html {
-//     // for now, just draw a border around each child, and center the content vertically inside the border
-//     // also prevent clicks from propagating to the child
-    
-//     html! {
-//         <div class="border-2 border-green-300" draggable="true" ondragstart={props.ondragstart}>
-//             {props.children.clone()}
-//         </div>
-//     }
-// }
